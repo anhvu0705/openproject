@@ -1,0 +1,75 @@
+name: Deploy OpenProject to Cloud Run
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: openproject-481014
+  REGION: us-central1
+  IMAGE_NAME: openproject
+  REGISTRY: us-central1-docker.pkg.dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account_email: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker ${{ env.REGISTRY }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/openproject-docker/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/openproject-docker/${{ env.IMAGE_NAME }}:latest .
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/openproject-docker/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/openproject-docker/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy openproject \
+            --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/openproject-docker/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 3600 \
+            --set-env-vars "OPENPROJECT_HOST_NAME=${{ secrets.OPENPROJECT_HOST_NAME }},RAILS_ENV=production" \
+            --set-cloudsql-instances=${{ secrets.CLOUD_SQL_INSTANCE }} \
+            --service-account=${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Get service URL
+        run: |
+          URL=$(gcloud run services describe openproject --platform managed --region ${{ env.REGION }} --project ${{ env.PROJECT_ID }} --format='value(status.url)')
+          echo "OpenProject deployed at: $URL"
+          echo "DEPLOYMENT_URL=$URL" >> $GITHUB_OUTPUT
+
+      - name: Deployment completed
+        run: |
+          echo "✅ OpenProject successfully deployed to Cloud Run"
+          echo "🔗 Service: openproject"
+          echo "📍 Region: ${{ env.REGION }}"
+          echo "🚀 Status: Active"
