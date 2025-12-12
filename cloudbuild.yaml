@@ -1,0 +1,81 @@
+# Cloud Build Configuration for OpenProject
+# Builds Docker image and deploys to Cloud Run
+
+steps:
+  # Step 1: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:latest'
+      - '.'
+    waitFor: ['-']
+
+  # Step 2: Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
+    waitFor: ['build-image']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:latest'
+    waitFor: ['push-image-sha']
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gke-deploy'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'openproject'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
+      - '--platform'
+      - 'managed'
+      - '--region'
+      - 'us-central1'
+      - '--project'
+      - '$PROJECT_ID'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '3600'
+      - '--set-env-vars'
+      - 'OPENPROJECT_HOST_NAME=${_OPENPROJECT_HOST},RAILS_ENV=production'
+      - '--set-cloudsql-instances=${_CLOUD_SQL_INSTANCE}'
+      - '--service-account=${_SERVICE_ACCOUNT}'
+    waitFor: ['push-image-latest']
+
+# Images to push to registry
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:latest'
+
+# Build timeout
+timeout: '3600s'
+
+# Substitutions for environment variables
+substitutions:
+  _OPENPROJECT_HOST: 'openproject.example.com'
+  _CLOUD_SQL_INSTANCE: 'openproject-481014:us-central1:openproject-db'
+  _SERVICE_ACCOUNT: 'openproject-sa@openproject-481014.iam.gserviceaccount.com'
+
+# Options
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Tags for organizing builds
+tags:
+  - 'openproject'
+  - 'cloud-run'
+  - 'docker'
+  - 'gcp'
+  - 'github'
