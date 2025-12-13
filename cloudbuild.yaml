@@ -7,7 +7,7 @@ steps:
     id: 'build-image'
     args:
       - 'build'
-            - '-f'
+      - '-f'
       - 'docker/prod/Dockerfile'
       - '-t'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
