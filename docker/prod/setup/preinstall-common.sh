@@ -26,7 +26,7 @@ ARCHITECTURE=$(get_architecture)
 apt-get update -qq
 # make sure all dependencies are up to date
 apt-get upgrade -y
-apt-get install -yq hostname
+ln -sf /bin/cat /usr/bin/hostname || true
 
 apt-get install -yq --no-install-recommends \
 	curl \
