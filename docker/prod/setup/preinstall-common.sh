@@ -51,7 +51,8 @@ apt-get install -yq --no-install-recommends \
 	imagemagick \
 	libclang-dev \
 	libjemalloc2 \
-	git
+	git \
+      hostname
 
 for version in $PGVERSION_CHOICES ; do
 	apt-get install -yq --no-install-recommends postgresql-client-$version
