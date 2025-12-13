@@ -67,7 +67,7 @@ if [ ! "$BIM_SUPPORT" = "false" ]; then
 	rm /tmp/packages-microsoft-prod.deb
 
 	apt-get update -qq
-	apt-get install -y dotnet-runtime-6.0 # required for BIM edition
+	apt-get install -y dotnet-runtime-8.0 # required for BIM edition
 
 	tmpdir=$(mktemp -d)
 	cd $tmpdir
