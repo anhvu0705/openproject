@@ -4,6 +4,7 @@
 steps:
   # Step 1: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
     args:
       - 'build'
       - '-t'
@@ -15,12 +16,14 @@ steps:
 
   # Step 2: Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image-sha'
     args:
       - 'push'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:$SHORT_SHA'
     waitFor: ['build-image']
 
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image-latest'
     args:
       - 'push'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/openproject-docker/openproject:latest'
