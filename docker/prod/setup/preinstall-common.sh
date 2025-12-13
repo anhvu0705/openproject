@@ -26,8 +26,11 @@ ARCHITECTURE=$(get_architecture)
 apt-get update -qq
 # make sure all dependencies are up to date
 apt-get upgrade -y
-ln -sf /bin/cat /usr/bin/hostname || true
-
+cat > /usr/bin/hostname << 'EOF'
+#!/bin/sh
+echo "openproject-container"
+EOF
+chmod +x /usr/bin/hostname
 apt-get install -yq --no-install-recommends \
 	curl \
 	file \
